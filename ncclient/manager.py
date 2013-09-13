@@ -59,18 +59,27 @@ OPERATIONS = {
 }
 """Dictionary of method names and corresponding :class:`~ncclient.operations.RPC` subclasses. It is used to lookup operations, e.g. `get_config` is mapped to :class:`~ncclient.operations.GetConfig`. It is thus possible to add additional operations to the :class:`Manager` API."""
 
-def connect_ssh(*args, **kwds):
-    """Initialize a :class:`Manager` over the SSH transport. For documentation of arguments see :meth:`ncclient.transport.SSHSession.connect`.
+#def connect_ssh(*args, **kwds):
+#    """Initialize a :class:`Manager` over the SSH transport. For documentation of arguments see :meth:`ncclient.transport.SSHSession.connect`.
+#
+#    The underlying :class:`ncclient.transport.SSHSession` is created with :data:`CAPABILITIES`. It is first instructed to :meth:`~ncclient.transport.SSHSession.load_known_hosts` and then  all the provided arguments are passed directly to its implementation of :meth:`~ncclient.transport.SSHSession.connect`.
+#    """
+#    session = transport.SSHSession(capabilities.Capabilities(CAPABILITIES))
+#    session.load_known_hosts()
+#    session.connect(*args, **kwds)
+#    return Manager(session)
 
-    The underlying :class:`ncclient.transport.SSHSession` is created with :data:`CAPABILITIES`. It is first instructed to :meth:`~ncclient.transport.SSHSession.load_known_hosts` and then  all the provided arguments are passed directly to its implementation of :meth:`~ncclient.transport.SSHSession.connect`.
+
+def connect_stdio(*args, **kwargs):
+    """Create a subprocess with a NETCONF server, takes
     """
-    session = transport.SSHSession(capabilities.Capabilities(CAPABILITIES))
-    session.load_known_hosts()
-    session.connect(*args, **kwds)
+    session = transport.StdIOSession(capabilities.Capabilities(CAPABILITIES))
+    session.connect(*args, **kwargs)
     return Manager(session)
 
-connect = connect_ssh
-"Same as :func:`connect_ssh`, since SSH is the default (and currently, the only) transport."
+connect = connect_stdio
+"Same as :func:`connect_stdio`, since StdIO is the default transport (for now)."
+
 
 class OpExecutor(type):
 

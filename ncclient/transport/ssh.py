@@ -23,17 +23,13 @@ from select import select
 import paramiko
 
 from errors import AuthenticationError, SessionCloseError, SSHError, SSHUnknownHostError
-from session import Session
+from session import Session, Rfc4742Session
 from ncclient.xml_ import *
 
 import logging
 logger = logging.getLogger("ncclient.transport.ssh")
 
 BUF_SIZE = 4096
-# v1.0: RFC 4742
-MSG_DELIM = "]]>]]>"
-# v1.1: RFC 6242
-END_DELIM = '\n##\n'
 
 TICK = 0.1
 
@@ -56,10 +52,10 @@ def _colonify(fp):
         finga += ":" + fp[idx:idx+2]
     return finga
 
-class SSHSession(Session):
-
-    "Implements a :rfc:`4742` NETCONF session over SSH."
-
+class SSHSession(Rfc4742Session):
+    """
+    Implements a :rfc:`4742` NETCONF session over SSH.
+    """
 
     def __init__(self, capabilities):
         Session.__init__(self, capabilities)
@@ -67,16 +63,6 @@ class SSHSession(Session):
         self._transport = None
         self._connected = False
         self._channel = None
-        self._buffer = StringIO() # for incoming data
-        # parsing-related, see _parse()
-        self._parsing_state10 = 0
-        self._parsing_pos10 = 0
-        self._parsing_pos11 = 0
-        self._parsing_state11 = 0
-        self._expchunksize = 0
-        self._curchunksize = 0
-        self._inendpos = 0
-        self._message = []
 
     def _parse10(self):
 
@@ -86,7 +72,7 @@ class SSHSession(Session):
         considered again."""
 
         logger.debug("parsing netconf v1.0")
-        delim = MSG_DELIM
+        delim = self.MSG_DELIM
         n = len(delim) - 1
         expect = self._parsing_state10
         buf = self._buffer
@@ -184,7 +170,7 @@ class SSHSession(Session):
                         inendpos += 1 # > 3 now #
                         num.append(x)
                     else:
-                        log.debug('%s (%s: expect digit)'%(pre, state))
+                        logger.debug('%s (%s: expect digit)'%(pre, state))
                         raise Exception
             elif state == inmsg:
                 message.append(x)
@@ -466,7 +452,7 @@ class SSHSession(Session):
                     try:
                         # send a HELLO msg using v1.0 EOM markers.
                         validated_element(data, tags='{urn:ietf:params:xml:ns:netconf:base:1.0}hello')
-                        data = "%s%s"%(data, MSG_DELIM)
+                        data = "%s%s"%(data, self.MSG_DELIM)
                     except XMLError:
                         # this is not a HELLO msg
                         # we publish v1.1 support
@@ -474,10 +460,10 @@ class SSHSession(Session):
                             if self._server_capabilities:
                                 if 'urn:ietf:params:netconf:base:1.1' in self._server_capabilities:
                                     # send using v1.1 chunked framing
-                                    data = "%s%s%s"%(start_delim(len(data)), data, END_DELIM)
+                                    data = "%s%s%s"%(start_delim(len(data)), data, self.END_DELIM)
                                 elif 'urn:ietf:params:netconf:base:1.0' in self._server_capabilities:
                                     # send using v1.0 EOM markers
-                                    data = "%s%s"%(data, MSG_DELIM)
+                                    data = "%s%s"%(data, self.MSG_DELIM)
                                 else: raise Exception
                             else:
                                 logger.debug('HELLO msg was sent, but server capabilities are still not known')
@@ -485,7 +471,7 @@ class SSHSession(Session):
                         # we publish only v1.0 support
                         else:
                             # send using v1.0 EOM markers
-                            data = "%s%s"%(data, MSG_DELIM)
+                            data = "%s%s"%(data, self.MSG_DELIM)
                     finally:
                         logger.debug("Sending: %s", data)
                         while data:

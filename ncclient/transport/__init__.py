@@ -15,13 +15,15 @@
 "Transport layer"
 
 from session import Session, SessionListener
-from ssh import SSHSession
+# from ssh import SSHSession
+from stdio import StdIOSession
 from errors import *
 
 __all__ = [
     'Session',
     'SessionListener',
-    'SSHSession',
+#    'SSHSession',
+    'StdIOSession',
     'TransportError',
     'AuthenticationError',
     'SessionCloseError',
