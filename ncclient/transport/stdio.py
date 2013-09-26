@@ -62,7 +62,7 @@ class StdIOSession(Rfc4742Session):
         start_delim = lambda data_len: '\n#%s\n' % data_len
 
         try:
-            while True:
+            while self._connected:
                 r, w, x = select([self._process.stdout], [], [], 0.1)
 
                 if r:
@@ -113,6 +113,8 @@ class StdIOSession(Rfc4742Session):
             logger.error("Broke out of main loop, error=%r", e)
             self.close()
             self._dispatch_error(e)
+
+        logger.debug("End of main loop.")
 
     @property
     def process(self):
